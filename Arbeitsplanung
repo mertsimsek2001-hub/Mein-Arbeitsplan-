@@ -1,0 +1,941 @@
+<!doctype html>
+
+<html lang="de">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<meta name="theme-color" content="#101827">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<meta name="apple-mobile-web-app-title" content="Arbeitsplan">
+
+<title>Mein Arbeitsplan</title>
+
+<style>
+
+*{box-sizing:border-box}
+
+body{margin:0;background:#101827;color:#f1f5ff;font-family:-apple-system,BlinkMacSystemFont,Arial,sans-serif}
+
+main{max-width:800px;margin:auto;padding:20px 13px 110px}
+
+h1{font-size:25px;margin:0 0 7px}
+
+h2{font-size:19px;margin:0 0 13px}
+
+small,.muted{color:#a8b9d0}
+
+.card{background:#1a2940;border:1px solid #30425e;border-radius:16px;padding:15px;margin:13px 0}
+
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+
+button,input,select,textarea{font:inherit}
+
+button{color:inherit;cursor:pointer}
+
+.btn{background:#293d5b;border:1px solid #425676;border-radius:10px;padding:11px;color:white}
+
+.primary{background:#4f74df;border-color:#7295fa;font-weight:bold}
+
+.danger{background:#713946}
+
+.small{padding:7px 12px}
+
+.tabs,.nav{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+
+.tabs{margin:17px 0}
+
+.tabs button,.nav button{background:#283a56;border:0;border-radius:10px;padding:12px 4px;font-size:13px}
+
+.tabs .active,.nav .active{background:#4f74df}
+
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+
+.stats .card{margin:0}
+
+.stats strong{display:block;font-size:22px;margin-top:8px}
+
+.green{color:#70e7be}
+
+.calendar,.weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+
+.weekdays{text-align:center;font-size:12px;color:#a8b9d0;margin-bottom:9px}
+
+.day{background:#273a55;border:1px solid transparent;border-radius:9px;min-height:75px;padding:7px 2px;text-align:center;min-width:0}
+
+.day.selected{background:#315b90;border-color:#9bc4ff}
+
+.day.other{opacity:.38}
+
+.day.today b{color:#77ecc9}
+
+.day b{display:block}
+
+.day span{display:block;margin-top:8px;font-size:9px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.arbeit{color:#aaccff}
+
+.urlaub{color:#74e6bb}
+
+.krank{color:#ff9ba8}
+
+.frei{color:#d6dbe3}
+
+.schulung,.berufsschule{color:#ddb8ff}
+
+.ausgleich{color:#ffd88e}
+
+.feiertag{color:#ffe0a1}
+
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+.field{display:flex;flex-direction:column;gap:6px}
+
+.field.full{grid-column:1/-1}
+
+.field label{font-size:12px;color:#bdcce0}
+
+.field input,.field select,.field textarea{background:#111d30;color:white;border:1px solid #455b7b;border-radius:10px;padding:11px;min-width:0;width:100%;min-height:44px}
+
+.field textarea{min-height:75px}
+
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:15px}
+
+.weekitem{display:block;width:100%;text-align:left;padding:14px;background:#283a56;border:1px solid #425676;border-radius:10px;margin:7px 0}
+
+.months{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+
+.month{background:#283a56;border:1px solid #425676;border-radius:11px;text-align:left;padding:13px}
+
+.month strong{display:block;margin:10px 0 5px}
+
+.balance{font-size:38px;font-weight:800;color:#70e7be;margin:14px 0}
+
+.entry{border-bottom:1px solid #344765;padding:13px 0;display:flex;justify-content:space-between;gap:8px}
+
+.entry:last-child{border:0}
+
+.entry p{font-size:12px;color:#a8b9d0;margin:5px 0}
+
+.entry button{background:#314665;border:1px solid #526584;border-radius:8px;padding:7px;font-size:12px}
+
+.notice{font-size:12px;line-height:1.6;color:#a8b9d0}
+
+.navbar{position:fixed;bottom:0;left:0;right:0;background:#121f32;border-top:1px solid #344765;padding:9px 8px calc(9px + env(safe-area-inset-bottom))}
+
+.nav{max-width:800px;margin:auto}
+
+@media(min-width:550px){
+
+.stats{grid-template-columns:repeat(4,1fr)}
+
+.months{grid-template-columns:repeat(3,1fr)}
+
+.day{min-height:95px}
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<main>
+
+<header>
+
+<small>DEIN PERSÖNLICHER KALENDER</small>
+
+<h1>Mein Arbeitsplan 📅</h1>
+
+<div class="muted">Arbeitstage und Überstunden</div>
+
+</header>
+
+<div id="app"></div>
+
+</main>
+
+<div class="navbar"><nav class="nav" id="nav"></nav></div>
+
+<script>
+
+(()=>{
+
+"use strict";
+
+const KEY="mein-arbeitsplan-private-v1";
+
+const TYPES={
+
+arbeit:"Arbeit",
+
+frei:"Frei",
+
+urlaub:"Urlaub",
+
+krank:"Krank",
+
+schulung:"Schulung",
+
+berufsschule:"Berufsschule",
+
+feiertag:"Feiertag",
+
+ausgleich:"Überstundenabbau"
+
+};
+
+const MONTHS=["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+
+const WEEK=["Mo","Di","Mi","Do","Fr","Sa","So"];
+
+const pad=n=>String(n).padStart(2,"0");
+
+const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+
+const dt=s=>new Date(+s.slice(0,4),+s.slice(5,7)-1,+s.slice(8,10),12);
+
+const add=(s,n)=>{let d=dt(s);d.setDate(d.getDate()+n);return iso(d)};
+
+const valid=s=>/^\d{4}-\d{2}-\d{2}$/.test(s||"")&&iso(dt(s))===s;
+
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const fmt=n=>(n<0?"−":"")+Math.floor(Math.abs(n)/60)+" h "+pad(Math.abs(n)%60)+" min";
+
+const fresh=()=>({days:{},overtime:[],settings:{targetMinutes:480}});
+
+let data;
+
+try{data=JSON.parse(localStorage.getItem(KEY))||fresh()}
+
+catch{data=fresh()}
+
+if(!data.days||!Array.isArray(data.overtime))data=fresh();
+
+if(!data.settings)data.settings={targetMinutes:480};
+
+const state={
+
+page:"kalender",
+
+view:"monat",
+
+day:iso(new Date()),
+
+editing:false
+
+};
+
+function save(){
+
+try{localStorage.setItem(KEY,JSON.stringify(data))}
+
+catch{alert("Speichern fehlgeschlagen. Bitte Speicher prüfen.")}
+
+}
+
+function work(e){
+
+if(!e?.start||!e?.end)return 0;
+
+const min=t=>(+t.slice(0,2))*60+(+t.slice(3,5));
+
+let a=min(e.start),b=min(e.end);
+
+if(b<a)b+=1440;
+
+return Math.max(0,b-a-(+e.breakMinutes||0));
+
+}
+
+function ots(){
+
+return data.overtime.filter(x=>x&&valid(x.date)&&Number.isFinite(+x.minutes));
+
+}
+
+const balance=()=>ots().reduce((n,x)=>n+(+x.minutes),0);
+
+function stats(a,b){
+
+let days=0,mins=0,hol=0;
+
+for(const [date,e] of Object.entries(data.days)){
+
+if(date<a||date>b)continue;
+
+if(e.status==="arbeit")days++;
+
+if(e.status==="urlaub")hol++;
+
+mins+=work(e);
+
+}
+
+return{days,mins,hol};
+
+}
+
+function period(){
+
+const s=state.day,d=dt(s),y=d.getFullYear(),m=d.getMonth();
+
+if(state.view==="tag")return[s,s];
+
+if(state.view==="woche"){
+
+const a=add(s,-((d.getDay()+6)%7));
+
+return[a,add(a,6)];
+
+}
+
+if(state.view==="monat")
+
+return[`${y}-${pad(m+1)}-01`,iso(new Date(y,m+1,0,12))];
+
+return[`${y}-01-01`,`${y}-12-31`];
+
+}
+
+function periodTitle(){
+
+const[a,b]=period(),d=dt(state.day);
+
+if(state.view==="tag")
+
+return new Intl.DateTimeFormat("de-DE",{dateStyle:"full"}).format(d);
+
+if(state.view==="woche")
+
+return `${a.split("-").reverse().join(".")} – ${b.split("-").reverse().join(".")}`;
+
+if(state.view==="monat")
+
+return MONTHS[d.getMonth()]+" "+d.getFullYear();
+
+return String(d.getFullYear());
+
+}
+
+function shift(n){
+
+let d=dt(state.day);
+
+if(state.view==="tag")d.setDate(d.getDate()+n);
+
+if(state.view==="woche")d.setDate(d.getDate()+n*7);
+
+if(state.view==="monat"){
+
+d.setDate(1);
+
+d.setMonth(d.getMonth()+n);
+
+}
+
+if(state.view==="jahr"){
+
+d.setDate(1);
+
+d.setFullYear(d.getFullYear()+n);
+
+}
+
+state.day=iso(d);
+
+render();
+
+}
+
+function button(action,label,cls=""){
+
+return `<button type="button" class="btn ${cls}" data-action="${action}">${label}</button>`;
+
+}
+
+function summary(a,b){
+
+let s=stats(a,b);
+
+return `<div class="stats">
+
+<div class="card"><small>Arbeitstage</small><strong>${s.days}</strong></div>
+
+<div class="card"><small>Arbeitszeit</small><strong>${fmt(s.mins)}</strong></div>
+
+<div class="card"><small>Urlaubstage</small><strong>${s.hol}</strong></div>
+
+<div class="card"><small>Überstunden gesamt</small><strong class="green">${fmt(balance())}</strong></div>
+
+</div>`;
+
+}
+
+function dayEditor(){
+
+let s=state.day,e=data.days[s]||{};
+
+return `<section class="card" id="editday">
+
+<div class="row"><h2>Tag bearbeiten</h2>${button("otDay","+ Überstunden","small")}</div>
+
+<p class="muted">${new Intl.DateTimeFormat("de-DE",{dateStyle:"full"}).format(dt(s))}</p>
+
+<form id="dayform">
+
+<div class="fields">
+
+<div class="field full"><label>Status</label>
+
+<select name="status">
+
+<option value="">Nicht geplant</option>
+
+${Object.entries(TYPES).map(([k,v])=>`<option value="${k}" ${e.status===k?"selected":""}>${v}</option>`).join("")}
+
+</select></div>
+
+<div class="field"><label>Beginn</label>
+
+<input type="time" name="start" value="${esc(e.start||"")}"></div>
+
+<div class="field"><label>Ende</label>
+
+<input type="time" name="end" value="${esc(e.end||"")}"></div>
+
+<div class="field"><label>Pause (Stunden)</label>
+
+<input type="number" min="0" max="23" name="ph" value="${Math.floor((+e.breakMinutes||0)/60)}"></div>
+
+<div class="field"><label>Pause (Minuten)</label>
+
+<input type="number" min="0" max="59" name="pm" value="${(+e.breakMinutes||0)%60}"></div>
+
+<div class="field full"><label>Notiz</label>
+
+<textarea name="note" placeholder="Zum Beispiel: Spätschicht">${esc(e.note||"")}</textarea></div>
+
+</div>
+
+<p class="notice">Berechnete Arbeitszeit: <b>${fmt(work(e))}</b>. Überstunden werden separat erfasst.</p>
+
+<div class="actions">
+
+<button class="btn primary" type="submit">Tag speichern</button>
+
+${button("delDay","Tag löschen","danger")}
+
+</div>
+
+</form></section>`;
+
+}
+
+function monthView(){
+
+const d=dt(state.day),y=d.getFullYear(),m=d.getMonth();
+
+const first=iso(new Date(y,m,1,12));
+
+const offset=(dt(first).getDay()+6)%7;
+
+const start=add(first,-offset);
+
+const n=(new Date(y,m+1,0,12).getDate()+offset)>35?42:35;
+
+let html="";
+
+for(let i=0;i<n;i++){
+
+let s=add(start,i),e=data.days[s];
+
+let other=dt(s).getMonth()!==m;
+
+html+=`<button class="day ${other?"other":""} ${s===state.day?"selected":""} ${s===iso(new Date())?"today":""}" data-date="${s}">
+
+<b>${dt(s).getDate()}</b>
+
+${e?.status?`<span class="${esc(e.status)}">${esc(TYPES[e.status]||"")}</span>`:""}
+
+</button>`;
+
+}
+
+return `<section class="card">
+
+<div class="weekdays">${WEEK.map(x=>`<span>${x}</span>`).join("")}</div>
+
+<div class="calendar">${html}</div>
+
+</section>${dayEditor()}`;
+
+}
+
+function weekView(){
+
+let[a]=period(),h="";
+
+for(let i=0;i<7;i++){
+
+let s=add(a,i),e=data.days[s];
+
+h+=`<button class="weekitem" data-date="${s}">
+
+<b>${WEEK[i]} · ${s.split("-").reverse().join(".")}</b>
+
+— ${esc(TYPES[e?.status]||"Nicht geplant")}
+
+<div><small>${e?.start&&e?.end?esc(e.start+"–"+e.end)+" · "+fmt(work(e)):"Tippen zum Bearbeiten"}</small></div>
+
+</button>`;
+
+}
+
+return `<section class="card"><h2>Deine Woche</h2>${h}</section>${dayEditor()}`;
+
+}
+
+function yearView(){
+
+const y=dt(state.day).getFullYear();
+
+return `<section class="card"><h2>Alle Monate ${y}</h2>
+
+<div class="months">
+
+${MONTHS.map((name,i)=>{
+
+let m=pad(i+1),s=stats(`${y}-${m}-01`,iso(new Date(y,i+1,0,12)));
+
+return `<button class="month" data-month="${m}">
+
+${name}<strong>${s.days} Arbeitstage</strong>
+
+<small>${fmt(s.mins)} · ${s.hol} Urlaubstage</small>
+
+</button>`;
+
+}).join("")}
+
+</div></section>`;
+
+}
+
+function calendar(){
+
+const[a,b]=period();
+
+return `<div class="tabs">
+
+${["tag","woche","monat","jahr"].map(v=>`<button data-view="${v}" class="${state.view===v?"active":""}">${v[0].toUpperCase()+v.slice(1)}</button>`).join("")}
+
+</div>
+
+<div class="row"><h2>${periodTitle()}</h2>
+
+<div class="row">${button("prev","‹","small")}${button("today","Heute","small")}${button("next","›","small")}</div>
+
+</div>
+
+${summary(a,b)}
+
+${state.view==="monat"?monthView():state.view==="woche"?weekView():state.view==="tag"?dayEditor():yearView()}`;
+
+}
+
+function otForm(){
+
+let e=ots().find(x=>x.id===state.editing)||{};
+
+let m=Math.abs(+e.minutes||0);
+
+return `<section class="card"><h2>${e.id?"Überstunden bearbeiten":"Überstunden eintragen"}</h2>
+
+<form id="otform"><div class="fields">
+
+<div class="field"><label>Datum</label><input type="date" name="date" required value="${esc(e.date||state.day)}"></div>
+
+<div class="field"><label>Art</label>
+
+<select name="kind">
+
+<option value="plus" ${+e.minutes>=0?"selected":""}>Aufgebaut (+)</option>
+
+<option value="minus" ${+e.minutes<0?"selected":""}>Abgebaut (−)</option>
+
+</select></div>
+
+<div class="field"><label>Stunden</label>
+
+<input type="number" min="0" max="9999" name="h" value="${Math.floor(m/60)}" required></div>
+
+<div class="field"><label>Minuten</label>
+
+<input type="number" min="0" max="59" name="m" value="${m%60}" required></div>
+
+<div class="field"><label>Von (optional)</label>
+
+<input type="time" name="start" value="${esc(e.start||"")}"></div>
+
+<div class="field"><label>Bis (optional)</label>
+
+<input type="time" name="end" value="${esc(e.end||"")}"></div>
+
+<div class="field full"><label>Notiz</label>
+
+<input name="note" maxlength="180" value="${esc(e.note||"")}" placeholder="Warum sind die Überstunden entstanden?"></div>
+
+</div>
+
+<p class="notice">Beispiel: Für 15 Minuten trägst du 0 Stunden und 15 Minuten ein.</p>
+
+<div class="actions"><button class="btn primary" type="submit">Speichern</button>${button("otCancel","Abbrechen")}</div>
+
+</form></section>`;
+
+}
+
+function overtime(){
+
+return `<h2>Mein Überstundenkonto</h2>
+
+<section class="card">
+
+<small>Gesamtsaldo über alle Jahre</small>
+
+<div class="balance">${fmt(balance())}</div>
+
+${button("otNew","+ Eintrag hinzufügen","primary")}
+
+</section>
+
+${state.editing!==false?otForm():""}
+
+<section class="card"><h2>Alle Buchungen (${ots().length})</h2>
+
+${ots().slice().sort((a,b)=>b.date.localeCompare(a.date)).map(e=>`
+
+<div class="entry">
+
+<div><b>${e.date.split("-").reverse().join(".")}</b>
+
+<p>${esc(e.note||(+e.minutes>=0?"Aufgebaut":"Abgebaut"))}
+
+${e.start||e.end?" · "+esc((e.start||"?")+"–"+(e.end||"?")):""}</p></div>
+
+<div style="text-align:right">
+
+<b class="${+e.minutes>=0?"green":""}">${+e.minutes>=0?"+":""}${fmt(+e.minutes)}</b>
+
+<div style="margin-top:7px"><button data-edit="${esc(e.id)}">Bearbeiten</button>
+
+<button data-del="${esc(e.id)}">✕</button></div>
+
+</div></div>`).join("")||'<p class="muted">Noch keine Überstunden eingetragen.</p>'}
+
+</section>`;
+
+}
+
+function report(){
+
+const y=dt(state.day).getFullYear();
+
+const s=stats(`${y}-01-01`,`${y}-12-31`);
+
+const oy=ots().filter(x=>x.date.startsWith(y+"-")).reduce((a,x)=>a+(+x.minutes),0);
+
+return `<div class="row"><h2>Auswertung ${y}</h2>
+
+<div>${button("yrPrev","‹","small")} ${button("yrNext","›","small")}</div></div>
+
+${summary(`${y}-01-01`,`${y}-12-31`)}
+
+<section class="card"><h2>Dein Jahr</h2>
+
+<p>Arbeitstage: <b>${s.days}</b></p>
+
+<p>Gearbeitet: <b>${fmt(s.mins)}</b></p>
+
+<p>Urlaubstage: <b>${s.hol}</b></p>
+
+<p>Überstunden im Jahr: <b>${fmt(oy)}</b></p>
+
+</section>`;
+
+}
+
+function settings(){
+
+let n=+data.settings.targetMinutes||0;
+
+return `<h2>Einstellungen & Datensicherung</h2>
+
+<section class="card"><h2>Geplante Stunden pro Arbeitstag</h2>
+
+<form id="targetform"><div class="fields">
+
+<div class="field"><label>Stunden</label><input type="number" min="0" max="23" name="h" value="${Math.floor(n/60)}"></div>
+
+<div class="field"><label>Minuten</label><input type="number" min="0" max="59" name="m" value="${n%60}"></div>
+
+</div><div class="actions"><button class="btn primary">Speichern</button></div></form></section>
+
+<section class="card"><h2>Datensicherung</h2>
+
+<p class="notice">Deine Einträge bleiben im lokalen Speicher auf diesem iPhone. Sichere sie regelmäßig, denn beim Löschen der Website-Daten können sie verloren gehen.</p>
+
+${button("backup","Backup herunterladen (.json)","primary")}
+
+<div class="field" style="margin-top:20px">
+
+<label>Backup wiederherstellen (.json)</label>
+
+<input type="file" accept=".json,application/json" id="restore">
+
+</div></section>`;
+
+}
+
+function render(){
+
+document.getElementById("nav").innerHTML=[
+
+["kalender","Kalender"],["stunden","Überstunden"],["bericht","Auswertung"],["settings","Einstellungen"]
+
+].map(([k,v])=>`<button class="${state.page===k?"active":""}" data-page="${k}">${v}</button>`).join("");
+
+document.getElementById("app").innerHTML=
+
+state.page==="kalender"?calendar():
+
+state.page==="stunden"?overtime():
+
+state.page==="bericht"?report():settings();
+
+}
+
+function jumpDay(s){
+
+state.day=s;
+
+if(state.view==="jahr")state.view="monat";
+
+state.page="kalender";
+
+render();
+
+document.getElementById("editday")?.scrollIntoView({behavior:"smooth"});
+
+}
+
+document.addEventListener("click",e=>{
+
+let b=e.target.closest("button");
+
+if(!b)return;
+
+if(b.dataset.page){state.page=b.dataset.page;render();scrollTo(0,0);return}
+
+if(b.dataset.view){state.view=b.dataset.view;render();return}
+
+if(b.dataset.date){jumpDay(b.dataset.date);return}
+
+if(b.dataset.month){
+
+state.day=state.day.slice(0,4)+"-"+b.dataset.month+"-01";
+
+state.view="monat";render();return;
+
+}
+
+if(b.dataset.edit){state.editing=b.dataset.edit;render();return}
+
+if(b.dataset.del){
+
+if(confirm("Überstundeneintrag wirklich löschen?")){
+
+data.overtime=data.overtime.filter(x=>x.id!==b.dataset.del);
+
+save();render();
+
+}
+
+return;
+
+}
+
+switch(b.dataset.action){
+
+case"prev":shift(-1);break;
+
+case"next":shift(1);break;
+
+case"today":state.day=iso(new Date());render();break;
+
+case"delDay":
+
+if(confirm("Arbeitstag löschen?")){
+
+delete data.days[state.day];save();render();
+
+}
+
+break;
+
+case"otDay":
+
+state.page="stunden";state.editing=null;render();break;
+
+case"otNew":
+
+state.editing=null;render();break;
+
+case"otCancel":
+
+state.editing=false;render();break;
+
+case"yrPrev":case"yrNext":{
+
+let d=dt(state.day);
+
+d.setFullYear(d.getFullYear()+(b.dataset.action==="yrNext"?1:-1));
+
+state.day=iso(d);render();break;
+
+}
+
+case"backup":{
+
+let a=document.createElement("a");
+
+let url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:"application/json"}));
+
+a.href=url;a.download="Mein-Arbeitsplan-"+iso(new Date())+".json";
+
+a.click();
+
+setTimeout(()=>URL.revokeObjectURL(url),3000);
+
+break;
+
+}
+
+}
+
+});
+
+document.addEventListener("submit",e=>{
+
+e.preventDefault();
+
+let f=new FormData(e.target);
+
+if(e.target.id==="dayform"){
+
+let ph=+f.get("ph"),pm=+f.get("pm");
+
+if(!Number.isInteger(ph)||ph<0||ph>23||!Number.isInteger(pm)||pm<0||pm>59)return alert("Pause prüfen");
+
+let entry={
+
+status:f.get("status"),start:f.get("start"),end:f.get("end"),
+
+breakMinutes:ph*60+pm,note:String(f.get("note")||"").trim()
+
+};
+
+if(!entry.status&&!entry.start&&!entry.end&&!entry.note)
+
+delete data.days[state.day];
+
+else data.days[state.day]=entry;
+
+save();render();alert("Tag gespeichert");
+
+}
+
+if(e.target.id==="otform"){
+
+let h=+f.get("h"),m=+f.get("m"),date=f.get("date");
+
+if(!valid(date)||!Number.isInteger(h)||h<0||h>9999||!Number.isInteger(m)||m<0||m>59||h*60+m===0)return alert("Bitte gültige Stunden oder Minuten eingeben");
+
+let old=ots().find(x=>x.id===state.editing);
+
+let entry={
+
+id:old?.id||String(Date.now())+Math.random(),
+
+date,minutes:(h*60+m)*(f.get("kind")==="minus"?-1:1),
+
+start:f.get("start"),end:f.get("end"),
+
+note:String(f.get("note")||"").trim()
+
+};
+
+if(old)data.overtime=data.overtime.map(x=>x.id===old.id?entry:x);
+
+else data.overtime.push(entry);
+
+state.editing=false;save();render();
+
+alert("Überstunden gespeichert");
+
+}
+
+if(e.target.id==="targetform"){
+
+let h=+f.get("h"),m=+f.get("m");
+
+if(!Number.isInteger(h)||h<0||h>23||!Number.isInteger(m)||m<0||m>59)return alert("Ungültige Zeit");
+
+data.settings.targetMinutes=h*60+m;
+
+save();render();alert("Gespeichert");
+
+}
+
+});
+
+document.addEventListener("change",async e=>{
+
+if(e.target.id!=="restore")return;
+
+let file=e.target.files[0];if(!file)return;
+
+try{
+
+let d=JSON.parse(await file.text());
+
+if(!d||!d.days||!Array.isArray(d.overtime))throw Error();
+
+if(!confirm("Aktuelle Daten durch Backup ersetzen?"))return;
+
+data={days:d.days,overtime:d.overtime,settings:d.settings||{targetMinutes:480}};
+
+save();render();alert("Backup wiederhergestellt");
+
+}catch{alert("Ungültige Backup-Datei")}
+
+});
+
+render();
+
+})();
+
+</script>
+
+</body>
+
+</html>
